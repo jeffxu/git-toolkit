@@ -1,0 +1,76 @@
+#!/bin/bash
+# TODO add archive
+# TODO filter D files
+
+# Init
+VERBOSE=false
+ERROR=false
+
+while getopts ":w:o:cld:zv" flag
+do
+    case $flag in
+    w)  # git workspace(must be the root of git repo)
+        WORKPATH=$OPTARG
+    ;;
+    o)  # exported to 
+        DEST_ROOT=$OPTARG
+        [ ! $(echo $DEST_ROOT | grep '^/') ] && DEST_ROOT=$PWD/$DEST_ROOT
+        [ ! $(echo $DEST_ROOT | grep '/$') ] && DEST_ROOT=$DEST_ROOT/
+    ;;
+    c) # export and compress these files in tar formmat
+        COMPRESS=true
+    ;;
+    l) # only list these file names
+        LIST=true
+    ;;
+    z) # zip formmat compress exported files
+        ZIP=true
+    ;;
+    d) # 
+        DIFF=$OPTARG 
+    ;;
+    v) # verbose
+        VERBOSE=true
+    ;;
+    *)
+        ERROR=true
+    ;;
+    esac
+done
+
+[ -z w ] && ERROR=true
+
+if $ERROR; then 
+    echo "usage: $0 -lvc [-w GIT_WORKSPACE_ROOT] [-o EXPORT_TO] [-d GIT_DIFF_COMMIT_HASH]"
+    echo '-l   List files which are going to be exported.'
+    echo '-v   Cause to be verbose, showing files after they are exported.'
+    echo '-c   Compress exported files into tar formmat.'
+    echo '-z   Compress exported files into zip formmat.'
+    exit 8
+fi
+
+[ -z $DEST_ROOT ] && DEST_ROOT=$PWD/
+
+cd $WORKPATH
+if [ -z "$DIFF" ]; then
+    GIT_LIST=`git diff --name-status`
+else 
+    GIT_LIST=`git diff $DIFF --name-status`
+fi
+
+for f in $GIT_LIST; do
+    [ $(echo $f | grep '^[M|A|D|R|C|U]$') ] && continue
+    p=$PWD/$f
+    if ${LIST:=false}; then
+        echo $p
+    else
+        if [ $(echo $f | grep '/') ]; then
+            DEST_DIR=$DEST_ROOT${f%/*}
+            [ ! -d $DEST_DIR ] && mkdir -p $DEST_DIR
+            cp $p $DEST_DIR
+        else
+            cp $p $DEST_ROOT
+        fi
+        [ $VERBOSE = true ] && echo $DEST_ROOT$f
+    fi
+done
