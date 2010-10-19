@@ -1,21 +1,24 @@
 #!/bin/bash
 # TODO add archive
 # TODO filter D files
+# TODO remove -w flag move to end of options
 
 # Init
 VERBOSE=false
 ERROR=false
+RECORD=false
+RETRIEVE=false
 
-while getopts ":w:o:cld:zv" flag
+while getopts ":w:o:cld:zvrR" flag
 do
     case $flag in
-    w)  # git workspace(must be the root of git repo)
-        WORKPATH=$OPTARG
-    ;;
     o)  # exported to 
         DEST_ROOT=$OPTARG
         [ ! $(echo $DEST_ROOT | grep '^/') ] && DEST_ROOT=$PWD/$DEST_ROOT
         [ ! $(echo $DEST_ROOT | grep '/$') ] && DEST_ROOT=$DEST_ROOT/
+    ;;
+    w)
+        WORKPATH=$OPTARG
     ;;
     c) # export and compress these files in tar formmat
         COMPRESS=true
@@ -32,30 +35,51 @@ do
     v) # verbose
         VERBOSE=true
     ;;
+    r)
+        RECORD=true
+    ;;
+    R)
+        RECORD=true
+        RETRIEVE=true
+    ;;
     *)
         ERROR=true
     ;;
     esac
 done
 
-[ -z w ] && ERROR=true
+[ -z "$WORKPATH" ] && ERROR=true
 
 if $ERROR; then 
-    echo "usage: $0 -lvc [-w GIT_WORKSPACE_ROOT] [-o EXPORT_TO] [-d GIT_DIFF_COMMIT_HASH]"
+    echo "usage: git-export [-w GIT_WORKSPACE] -lvc [-o EXPORT_TO] [-d GIT_DIFF_COMMIT_HASH]"
     echo '-l   List files which are going to be exported.'
     echo '-v   Cause to be verbose, showing files after they are exported.'
-    echo '-c   Compress exported files into tar formmat.'
-    echo '-z   Compress exported files into zip formmat.'
+    echo '-c   Compress exported files into tar formmat.[not implemented yet]'
+    echo '-z   Compress exported files into zip formmat.[not implemented yet]'
+    echo '-r   Record last commit id to the file .git-export located in the root of workpath.'
+    echo '-R   Diff from last commit id recorded in .git-export file.'
     exit 8
 fi
 
-[ -z $DEST_ROOT ] && DEST_ROOT=$PWD/
+[ -z "$DEST_ROOT" ] && DEST_ROOT=$PWD/
 
+# CD to root of workpath
 cd $WORKPATH
+WORKPATH=`git rev-parse --show-cdup`
+if [ -n "$WORKPATH" ]; then
+    cd $WORKPATH
+fi
+
+if $RETRIEVE ;then
+    if [ -e ".git-export" ]; then
+        DIFF=`cat .git-export`
+    fi
+fi
+
 if [ -z "$DIFF" ]; then
     GIT_LIST=`git diff --name-status`
 else 
-    GIT_LIST=`git diff $DIFF --name-status`
+    GIT_LIST=`git diff --name-status $DIFF`
 fi
 
 for f in $GIT_LIST; do
@@ -74,3 +98,12 @@ for f in $GIT_LIST; do
         [ $VERBOSE = true ] && echo $DEST_ROOT$f
     fi
 done
+
+
+if $RECORD; then
+    LAST_COMMIT_ID=`git log --pretty=oneline -n1`
+    if [ -n "$LAST_COMMIT_ID" ]; then
+        LAST_COMMIT_ID=${LAST_COMMIT_ID:0:20}
+        echo $LAST_COMMIT_ID > .git-export
+    fi
+fi
