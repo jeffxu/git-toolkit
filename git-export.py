@@ -1,8 +1,22 @@
 #!/usr/bin/env python
 import sys
 import optparse
+import StringIO
 from os import path
 from subprocess import Popen, PIPE
+
+def parseLog(log, workDir, outputDir, verbose=False):
+    """Parsing every single log printed from git log command"""
+    if log.startswith('D'):
+        print log
+    else:
+        if verbose:
+            print log
+        dumpFile(log.split("\t")[1], workDir, outputDir)
+
+def dumpFile(path, workDir, outputDir):
+    """Dump file from the path"""
+    print path
 
 def read():
     """Reading last recorded hash value from .git-export file"""
@@ -62,9 +76,15 @@ def export(workDir, outputDir, diff, last, record=False, read=False):
         cmd = "git diff --name-status %s" % diff
         print cmd
         p = Popen(cmd, shell=True, stdout=PIPE, cwd=workDir)
-        files = p.stdout.read()
-        print files
+        logs = p.stdout.read()
+
     #if read or record:
+    logs = StringIO.StringIO(logs)
+    while True:
+        line = logs.readline()
+        if not line:
+            break;
+        parseLog(line.strip(), workDir, outputDir)
     return 0
 
 def main():
