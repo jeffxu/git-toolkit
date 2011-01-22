@@ -2,6 +2,8 @@
 import sys
 import optparse
 import StringIO
+import os
+import shutil
 from os import path
 from subprocess import Popen, PIPE
 
@@ -16,7 +18,14 @@ def parseLog(log, workDir, outputDir, verbose=False):
 
 def dumpFile(path, workDir, outputDir):
     """Dump file from the path"""
-    print path
+    dir = os.path.dirname(path)
+    if dir != path:
+        destDir = os.path.join(outputDir, dir)
+        if not os.path.exists(destDir):
+            os.makedirs(destDir)
+
+    #print os.path.join(workDir, path), os.path.join(outputDir, path)
+    shutil.copy2(os.path.join(workDir, path), os.path.join(outputDir, path))
 
 def read():
     """Reading last recorded hash value from .git-export file"""
