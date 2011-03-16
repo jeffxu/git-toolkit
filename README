@@ -1,6 +1,0 @@
-==EXAMPLE==
-Blow command will export commits between a4401fb768 to c904d331f of subdirectory workspace/project to parent directory tmp.
-git-export -w workspace/project -o ../tmp -v -d c904d331f..a4401fb768
-
-Blow command will export all modified files which have not been committed to tmp directory.
-git-export -w workspace/project -o ../tmp -v
