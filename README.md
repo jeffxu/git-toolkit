@@ -3,7 +3,7 @@
 This example will export last 4 commits from /home/develop/workspace/test to /tmp/test
 > git-export.py /home/develop/workspace/test /tmp/test -l4
 
-Blow command will export commits between a4401fb768 to c904d331f from subdirectory `workspace/project` to parent `tmp` directory.
+Blow command will export commits between a4401fb768 to c904d331f from subdirectory workspace/project to parent tmp directory.
 > git-export.py workspace/project ../tmp -d c904d331f..a4401fb768
 
 **Bash version of the git-export is deprecated.**
