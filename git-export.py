@@ -27,16 +27,7 @@ def dumpFile(path, workDir, outputDir):
     #print os.path.join(workDir, path), os.path.join(outputDir, path)
     shutil.copy2(os.path.join(workDir, path), os.path.join(outputDir, path))
 
-def read():
-    """Reading last recorded hash value from .git-export file"""
-    pass
-
-def record(workDir):
-    """Recording hash value to .git-export file. If not exits, create it."""
-#   if not path.exists(path.join(workDir, '.git-export')):
-#      None 
-
-def getCurrentRev(workDir):
+def getLatestRev(workDir):
     """Get latest revision"""
     cmd = "git log --pretty=format:%h -n1"
     p = Popen(cmd, shell=True, stdout=PIPE, cwd=workDir)
@@ -60,13 +51,13 @@ def getRepoRoot(workDir):
     workDir = path.join(workDir, relDir)
     return path.abspath(workDir)
 
-def export(workDir, outputDir, diff, last, record=False, read=False):
+def export(workDir, outputDir, diff, last, verbose=False):
     """Copy files from repository to output dir."""
     # Abs paths
     workDir   = path.abspath(workDir)
     outputDir = path.abspath(outputDir)
 
-    print workDir, outputDir, diff, last, record, read
+    #print workDir, outputDir, diff, last
     if not path.exists(workDir) or not path.exists(outputDir):
         print "Repsitory or output dir not exists."
         return 2
@@ -79,32 +70,31 @@ def export(workDir, outputDir, diff, last, record=False, read=False):
         rev = p.stdout.read()
         if len(rev) == 0:
             rev = ""
-        diff = rev + ".." + getCurrentRev(workDir)
+        diff = rev + ".." + getLatestRev(workDir)
 
     if diff:
         cmd = "git diff --name-status %s" % diff
-        print cmd
+        if verbose:
+            print cmd
         p = Popen(cmd, shell=True, stdout=PIPE, cwd=workDir)
         logs = p.stdout.read()
 
-    #if read or record:
     logs = StringIO.StringIO(logs)
     while True:
         line = logs.readline()
         if not line:
             break;
-        parseLog(line.strip(), workDir, outputDir)
+        parseLog(line.strip(), workDir, outputDir, verbose)
     return 0
 
 def main():
     """Main Function"""
     p = optparse.OptionParser(description="Export files from git repository", 
-                                prog="argTest", 
+                                prog=os.path.basename(sys.argv[0]), 
                                 version="0.1a", 
-                                usage="%prog [WORK_DIR] [OUTPUT_DIR] -r -R --diff=[hash..hash] -l [number]")
+                                usage="%prog [WORK_DIR] [OUTPUT_DIR] -v --diff=[hash..hash] -l [number]")
     p.add_option("--diff", "-d", action="store", dest="diff")
-    p.add_option("--record", "-R", action="store_true", dest="record", default=False)
-    p.add_option("--read", "-r", action="store_true", dest="read", default=False)
+    p.add_option("--verbose", "-v", action="store_true", dest="verbose", default=False)
     p.add_option("--last", "-l", action="store", dest="last")
 
     options, arguments = p.parse_args()
@@ -117,7 +107,7 @@ def main():
 
         sys.exit(export(workDir, outputDir, 
                         options.diff, options.last, 
-                        options.record, options.read))
+                        options.verbose))
     else:
         p.print_help()
 
