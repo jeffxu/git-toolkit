@@ -1,9 +1,5 @@
 #!/usr/bin/env python
-import sys
-import optparse
-import StringIO
-import os
-import shutil
+import sys, optparse, StringIO, os, shutil, time
 from os import path
 from subprocess import Popen, PIPE
 
@@ -58,9 +54,12 @@ def export(workDir, outputDir, diff, last, verbose=False):
     outputDir = path.abspath(outputDir)
 
     #print workDir, outputDir, diff, last
-    if not path.exists(workDir) or not path.exists(outputDir):
+    if not path.exists(workDir):
         print "Repsitory or output dir not exists."
         return 2
+
+    if  not path.exists(outputDir):
+        os.makedirs(outputDir)
 
     workDir = getRepoRoot(workDir)
 
@@ -99,17 +98,30 @@ def main():
 
     options, arguments = p.parse_args()
     argLen = len(arguments)
-    if argLen >= 1:
-        workDir = arguments[0]
-        outputDir = "."
-        if argLen > 1:
-            outputDir = arguments[1]
 
-        sys.exit(export(workDir, outputDir, 
-                        options.diff, options.last, 
-                        options.verbose))
+    if argLen == 0:
+        workDir = os.getcwd()
     else:
-        p.print_help()
+        workDir = arguments[0]
+
+        if workDir == 'help':
+            p.print_help()
+            sys.exit()
+
+    if argLen <= 1:
+        outputDir = '/tmp/%s_%d' % (os.path.basename(workDir), int(time.time()))
+    else:
+        outputDir = arguments[1]
+
+    if not options.diff and not options.last:
+        options.last = 1
+
+    result = export(workDir, outputDir, 
+                    options.diff, options.last, 
+                    options.verbose)
+    if result == 0:
+        print 'Repsitory has been exported to %s' % outputDir
+    sys.exit(result)
 
 if __name__ == '__main__':
     main()
