@@ -43,7 +43,7 @@ def getRepoRoot(workDir):
     if len(relDir) > 0:
         relDir = relDir[0].strip()
     else:
-        sys.exit(2)
+        return False
     workDir = path.join(workDir, relDir)
     return path.abspath(workDir)
 
@@ -55,13 +55,16 @@ def export(workDir, outputDir, diff, last, verbose=False):
 
     #print workDir, outputDir, diff, last
     if not path.exists(workDir):
-        print "Repsitory or output dir not exists."
+        print "Repsitory dir not exists."
         return 2
 
     if  not path.exists(outputDir):
         os.makedirs(outputDir)
 
     workDir = getRepoRoot(workDir)
+    if not workDir:
+        # git will print the error message, something like "fatal: Not a git repository (or any of the parent directories): .git"
+        return 2
 
     if last:
         cmd = "git log --pretty=format:%%h -n1 --skip=%s" % last
