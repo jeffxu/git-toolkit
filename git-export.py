@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, optparse, StringIO, os, shutil, time
 from os import path
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
 
 def parseLog(log, workDir, outputDir, verbose=False):
     """Parsing every single log printed from git log command"""
@@ -124,6 +124,18 @@ def main():
                     options.verbose)
     if result == 0:
         print 'Repsitory has been exported to %s' % outputDir
+        osname = os.uname()[0]
+        if osname == 'Linux': # Linux gui
+            try:
+                call(['xdg-open', outputDir])
+            except Exception, e:
+                pass
+        elif osname == 'Darwin': # Mac osx
+            try:
+                call(['open', outputDir])
+            except Exception, e:
+                pass
+            
     sys.exit(result)
 
 if __name__ == '__main__':
