@@ -3,82 +3,83 @@ import sys, optparse, StringIO, os, shutil, time
 from os import path
 from subprocess import Popen, PIPE, call
 
-def parseLog(log, workDir, outputDir, verbose=False):
+def parseLog(log, repoRoot, outputDir, verbose=False):
     """Parsing every single log printed from git log command"""
     if log.startswith('D'):
         print log
+        return False
     else:
         if verbose:
             print log
-        dumpFile(log.split("\t")[1], workDir, outputDir)
+    return log.split("\t")[1]
 
-def dumpFile(path, workDir, outputDir):
-    """Dump file from the path"""
-    dir = os.path.dirname(path)
-    if dir != path:
-        destDir = os.path.join(outputDir, dir)
-        if not os.path.exists(destDir):
-            os.makedirs(destDir)
+def dumpFile(innerFilePath, repoRoot, outputDir):
+    """Dump file from the given path which is sub path relative to the repository root."""
+    dirName = os.path.dirname(innerFilePath)
+    if dirName != innerFilePath:
+        destPath = os.path.join(outputDir, dirName)
+        if not os.path.exists(destPath):
+            os.makedirs(destPath)
 
-    #print os.path.join(workDir, path), os.path.join(outputDir, path)
-    shutil.copy2(os.path.join(workDir, path), os.path.join(outputDir, path))
+    #print os.path.join(repoRoot, innerFilePath), os.path.join(outputDir, innerFilePath)
+    shutil.copy2(os.path.join(repoRoot, innerFilePath), os.path.join(outputDir, innerFilePath))
 
-def getLatestRev(workDir):
-    """Get latest revision"""
+def getLatestRevHash(repoRoot):
+    """Get the latest revision hash code"""
     cmd = "git log --pretty=format:%h -n1"
-    p = Popen(cmd, shell=True, stdout=PIPE, cwd=workDir)
+    p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
     rev = p.stdout.read()
     if len(rev) == 0:
         return ""
     else:
         return rev
 
-def getRepoRoot(workDir):
+def getRepoRoot(sourceDir):
     """Return the abs path to the root repository dir"""
     # If the work dir is not the root of the repository dir, then get the
     # the relative path to the root.(../../)
     cmd = "git rev-parse --show-cdup"
-    p = Popen(cmd, shell=True, stdout=PIPE, cwd=workDir)
+    p = Popen(cmd, shell=True, stdout=PIPE, cwd=sourceDir)
     relDir = p.stdout.readlines()
     if len(relDir) > 0:
         relDir = relDir[0].strip()
     else:
         return False
-    workDir = path.join(workDir, relDir)
-    return path.abspath(workDir)
+    sourceDir = path.join(sourceDir, relDir)
+    return path.abspath(sourceDir)
 
-def export(workDir, outputDir, diff, last, verbose=False):
+def export(sourceDir, outputDir, diff, last, verbose=False):
     """Copy files from repository to output dir."""
     # Abs paths
-    workDir   = path.abspath(workDir)
+    sourceDir   = path.abspath(sourceDir)
     outputDir = path.abspath(outputDir)
 
-    #print workDir, outputDir, diff, last
-    if not path.exists(workDir):
+    #print sourceDir, outputDir, diff, last
+    if not path.exists(sourceDir):
         print "Repsitory dir not exists."
         return 2
 
     if  not path.exists(outputDir):
         os.makedirs(outputDir)
 
-    workDir = getRepoRoot(workDir)
-    if not workDir:
+    repoRoot = getRepoRoot(sourceDir)
+    if not repoRoot:
         # git will print the error message, something like "fatal: Not a git repository (or any of the parent directories): .git"
         return 2
 
     if last:
         cmd = "git log --pretty=format:%%h -n1 --skip=%s" % last
-        p = Popen(cmd, shell=True, stdout=PIPE, cwd=workDir)
+        p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
         rev = p.stdout.read()
         if len(rev) == 0:
             rev = ""
-        diff = rev + ".." + getLatestRev(workDir)
+        diff = rev + ".." + getLatestRevHash(repoRoot)
 
     if diff:
         cmd = "git diff --name-status %s" % diff
         if verbose:
             print cmd
-        p = Popen(cmd, shell=True, stdout=PIPE, cwd=workDir)
+        p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
         logs = p.stdout.read()
 
     logs = StringIO.StringIO(logs)
@@ -86,7 +87,9 @@ def export(workDir, outputDir, diff, last, verbose=False):
         line = logs.readline()
         if not line:
             break;
-        parseLog(line.strip(), workDir, outputDir, verbose)
+        innerFilePath = parseLog(line.strip(), repoRoot, outputDir, verbose)
+        if innerFilePath:
+            dumpFile(innerFilePath, repoRoot, outputDir)
     return 0
 
 def main():
@@ -103,23 +106,23 @@ def main():
     argLen = len(arguments)
 
     if argLen == 0:
-        workDir = os.getcwd()
+        sourceDir = os.getcwd()
     else:
-        workDir = arguments[0]
+        sourceDir = arguments[0]
 
-        if workDir == 'help':
+        if sourceDir == 'help':
             p.print_help()
             sys.exit()
 
     if argLen <= 1:
-        outputDir = '/tmp/%s_%d' % (os.path.basename(workDir), int(time.time()))
+        outputDir = '/tmp/%s_%d' % (os.path.basename(sourceDir), int(time.time()))
     else:
         outputDir = arguments[1]
 
     if not options.diff and not options.last:
         options.last = 1
 
-    result = export(workDir, outputDir, 
+    result = export(sourceDir, outputDir, 
                     options.diff, options.last, 
                     options.verbose)
     if result == 0:
