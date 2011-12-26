@@ -3,7 +3,7 @@ import sys, optparse, StringIO, os, shutil, time
 from os import path
 from subprocess import Popen, PIPE, call
 
-def parseLog(log, repoRoot, outputDir, verbose=False):
+def parseLog(log, verbose=False):
     """Parsing every single log printed from git log command"""
     if log.startswith('D'):
         print log
@@ -48,13 +48,38 @@ def getRepoRoot(sourceDir):
     sourceDir = path.join(sourceDir, relDir)
     return path.abspath(sourceDir)
 
-def export(sourceDir, outputDir, diff, last, verbose=False):
+def filelog(repoRoot, last):
+    """ Generate the file logs """
+
+    cmd = "git log --pretty=format:%%h -n1 --skip=%s" % last
+    p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
+    rev = p.stdout.read()
+    if len(rev) == 0:
+        rev = ""
+    diff = rev + ".." + getLatestRevHash(repoRoot)
+
+    cmd = "git diff --name-status %s" % diff
+
+    p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
+    logs_raw = p.stdout.read()
+    logs_raw = StringIO.StringIO(logs_raw)
+
+    logs = []
+    while True:
+        line = logs_raw.readline()
+        if not line:
+            break;
+        logs.append(line.strip())
+
+    return logs
+
+def export(sourceDir, outputDir, last, verbose=False):
     """Copy files from repository to output dir."""
     # Abs paths
     sourceDir   = path.abspath(sourceDir)
     outputDir = path.abspath(outputDir)
 
-    #print sourceDir, outputDir, diff, last
+    #print sourceDir, outputDir, last
     if not path.exists(sourceDir):
         print "Repsitory dir not exists."
         return 2
@@ -67,29 +92,10 @@ def export(sourceDir, outputDir, diff, last, verbose=False):
         # git will print the error message, something like "fatal: Not a git repository (or any of the parent directories): .git"
         return 2
 
-    if last:
-        cmd = "git log --pretty=format:%%h -n1 --skip=%s" % last
-        p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
-        rev = p.stdout.read()
-        if len(rev) == 0:
-            rev = ""
-        diff = rev + ".." + getLatestRevHash(repoRoot)
+    logs = filelog(repoRoot, last)
+    for log in logs:
+        dumpFile(parseLog(log, verbose), repoRoot, outputDir)
 
-    if diff:
-        cmd = "git diff --name-status %s" % diff
-        if verbose:
-            print cmd
-        p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
-        logs = p.stdout.read()
-
-    logs = StringIO.StringIO(logs)
-    while True:
-        line = logs.readline()
-        if not line:
-            break;
-        innerFilePath = parseLog(line.strip(), repoRoot, outputDir, verbose)
-        if innerFilePath:
-            dumpFile(innerFilePath, repoRoot, outputDir)
     return 0
 
 def main():
@@ -97,8 +103,7 @@ def main():
     p = optparse.OptionParser(description="Export files from git repository", 
                                 prog=os.path.basename(sys.argv[0]), 
                                 version="0.1a", 
-                                usage="%prog [WORK_DIR] [OUTPUT_DIR] -v --diff=[hash..hash] -l [number]")
-    p.add_option("--diff", "-d", action="store", dest="diff")
+                                usage="%prog [WORK_DIR] [OUTPUT_DIR] -v -l [number]")
     p.add_option("--verbose", "-v", action="store_true", dest="verbose", default=False)
     p.add_option("--last", "-l", action="store", dest="last")
 
@@ -119,12 +124,12 @@ def main():
     else:
         outputDir = arguments[1]
 
-    if not options.diff and not options.last:
+    if not options.last:
         options.last = 1
 
-    result = export(sourceDir, outputDir, 
-                    options.diff, options.last, 
-                    options.verbose)
+    result = export(sourceDir = sourceDir, outputDir = outputDir, 
+                    last = options.last, 
+                    verbose = options.verbose)
     if result == 0:
         print 'Repsitory has been exported to %s' % outputDir
         osname = os.uname()[0]
