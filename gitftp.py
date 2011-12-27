@@ -1,8 +1,22 @@
 #!/usr/bin/env python
 import optparse, os, sys
 from os import path
-from ftplib import FTP, error_perm
+from ftplib import FTP, error_perm, error_temp
 import paramiko
+
+def mkdir(path, ftp):
+    prevPath = ''
+    path = path.split('/')
+    path = path[:-1]
+    for p in path:
+        if not prevPath:
+            prevPath = p
+        else:
+            prevPath += '/' + p
+        try:
+            ftp.nlst(prevPath)
+        except error_temp:
+            ftp.mkd(prevPath)
 
 def cd(path, ftp):
     if ftp.__class__ == FTP:
@@ -19,8 +33,48 @@ def cd(path, ftp):
             return False
     return True
 
-def upload(localPath, remotePath, ftp):
-    pass
+def rm(remotePath, ftp, mod=1):
+    ''' mod: 1 ask for futher action, remove or ignore.
+             2 remove anyway.
+    '''
+    if mod == 1:
+        reaction = raw_input('Delete the remote file: ' + remotePath + ' ? y/n')
+        if reaction == 'y':
+            mod = 2
+        else:
+            return
+    print remotePath
+
+def upload(localPath, remotePath, ftp, conflic_mod=3):
+    ''' conflic_mod: 1 overwrite.
+                     2 ignore.
+                     3 ask user for futher action, overwrite or ignore.
+    '''
+    if ftp.__class__ == FTP:
+        try:
+            ftp.nlst(remotePath)
+            if conflic_mod == 3:
+                reaction = raw_input('Local file ' + localPath + 
+                                     ' confliced with the remote file' + remotePath + 
+                                     ' , o for overwrite, i for ignore')
+                if reaction == 'o':
+                    conflic_mod = 1
+                else:
+                    conflic_mod = 2
+        except error_temp:
+            # File not exists, continue to upload.
+            conflic_mod = 1
+        if conflic_mod == 1:
+            parent = remotePath[0:remotePath.rfind('/')]
+            try:
+                ftp.nlst(parent)
+                ftp.storbinary('STOR ' + remotePath, open(localPath, 'rb'))
+            except error_temp:
+                mkdir(remotePath, ftp)
+                ftp.storbinary('STOR ' + remotePath, open(localPath, 'rb'))
+    else:
+        # sftp
+        pass
 
 def initSftpClient(config):
     transport = paramiko.Transport((config['host'], config['port']))
@@ -110,7 +164,6 @@ def main():
 
     repoRoot = getRepoRoot(sourceDir) + '/'
     configPath = repoRoot + '.gitftp.cfg'
-    print repoRoot
 
     config = readConfig(configPath, repoRoot)
     #print config
@@ -126,8 +179,12 @@ def main():
     if cd(config['remote'], ftp):
         logs = filelog(repoRoot, options.last)
         for log in logs:
-            if log[1].startswith(config['local']):
-                print log
+            # Filter the local path for futher target file upload or remote deletion.
+            if config['local'] == '.' or log[1].startswith(config['local']):
+                if log[0] == 'D': # Delete remote file.
+                    rm(log[1], ftp)
+                else: # upload file.
+                    upload(repoRoot + log[1], log[1], ftp)
 
     ftp.close()
     # Below test file
