@@ -69,7 +69,7 @@ def filelog(repoRoot, last):
         line = logs_raw.readline()
         if not line:
             break;
-        logs.append(line.strip())
+        logs.append(line.strip().split('\t'))
 
     return logs
 
@@ -94,7 +94,8 @@ def export(sourceDir, outputDir, last, verbose=False):
 
     logs = filelog(repoRoot, last)
     for log in logs:
-        dumpFile(parseLog(log, verbose), repoRoot, outputDir)
+        if log[0] != 'D':
+            dumpFile(log[1], repoRoot, outputDir)
 
     return 0
 
