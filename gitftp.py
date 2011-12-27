@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import optparse, os, sys
 from os import path
-from ftplib import FTP
+from ftplib import FTP, error_perm
 import paramiko
 
 def cd(path, ftp):
@@ -30,9 +30,13 @@ def initSftpClient(config):
     return sftp
 
 def initFtpClient(config):
-    ftp = FTP()
-    ftp.connect(config['host'], config['port'])
-    ftp.login(config['user'], config['pwd'])
+    try:
+        ftp = FTP()
+        ftp.connect(config['host'], config['port'])
+        ftp.login(config['user'], config['pwd'])
+    except error_perm:
+        print '### Login failed!'
+        return False
 
     return ftp
 
@@ -101,24 +105,33 @@ def main():
     else:
         sourceDir = arguments[0]
 
+    if not options.last:
+        options.last = 1
+
     repoRoot = getRepoRoot(sourceDir) + '/'
     configPath = repoRoot + '.gitftp.cfg'
     print repoRoot
 
     config = readConfig(configPath, repoRoot)
-    print config
+    #print config
 
     if config['ftp_type'] == 'ftp':
         ftp = initFtpClient(config)
     else:
         ftp = initSftpClient(config)
 
-    cd(config['remote'], ftp)
+    if not ftp:
+        exit(2)
+
+    if cd(config['remote'], ftp):
+        logs = filelog(repoRoot, options.last)
+        for log in logs:
+            if log[1].startswith(config['local']):
+                print log
 
     ftp.close()
     # Below test file
     #sourceDir = path.abspath('.')
-    #print filelog(getRepoRoot(sourceDir), 6)
 
 if __name__ == '__main__':
     main()
