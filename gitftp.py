@@ -36,19 +36,19 @@ def upload(localPath, remotePath, ftp, conflic_mod=1):
     global logger
 
     if ftp.isPathExists(remotePath):
-        if conflic_mod == 3:
+        if conflic_mod == 1:
             reaction = raw_input('[Conflct]\nLocal: ' + localPath + '\n' + 
                                  'Remote: ' + remotePath + '\n' + 
                                  'w for overwrite, i for ignore: ')
             if reaction.lower() == 'w':
-                conflic_mod = 1
-            else:
                 conflic_mod = 2
+            else:
+                conflic_mod = 3
     else:
         # File not exists, continue to upload.
-        conflic_mod = 1
+        conflic_mod = 2
 
-    if conflic_mod == 1:
+    if conflic_mod == 2:
         parent = remotePath[0:remotePath.rfind('/')]
         if not ftp.isPathExists(parent):
             ftp.mkdir(parent)
@@ -148,11 +148,11 @@ def main():
     p.add_option("--last",    "-l", action="store", dest="last")
     #no log messages, .gitftp.cfg must given and settings must set properly, 
     # or app will be interrupted without messages.
-    p.add_option("--silence", "-s", action="store_false", dest="silence_mode")
+    p.add_option("--silence", "-s", action="store_true", dest="silence_mode", default=False)
     #force overwrite and delete remote files.
-    p.add_option("--force",   "-f", action="store_false", dest="force_mode")
+    p.add_option("--force",   "-f", action="store_true", dest="force_mode", default=False)
     #increase only, ignore overwrite and delete.
-    p.add_option("--increase",  "-i", action="store_false", dest="increase_mode")
+    p.add_option("--increase",  "-i", action="store_true", dest="increase_mode", default=False)
 
     options, arguments = p.parse_args()
     argLen = len(arguments)
@@ -167,6 +167,7 @@ def main():
 
     if options.silence_mode:
         logger.setLevel(logging.CRITICAL)
+        mode = 2
     elif options.verbose:
         logger.setLevel(logging.INFO)
     else:
@@ -183,7 +184,7 @@ def main():
     logger.info('Repository root: ' + repoRoot)
 
     configPath = repoRoot + '.gitftp.cfg'
-    config = readConfig(configPath, silence_mode)
+    config = readConfig(configPath, options.silence_mode)
 
     if not config:
         exit(2)
@@ -202,8 +203,6 @@ def main():
     sync(config['local'], config['remote'], logs, ftp, mode)
 
     ftp.close()
-    # Below test file
-    #sourceDir = path.abspath('.')
 
 if __name__ == '__main__':
     main()
