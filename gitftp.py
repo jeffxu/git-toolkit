@@ -19,10 +19,10 @@ def rm(remotePath, ftp, mod=1):
 
     if mod == 1:
         reaction = raw_input('Delete the remote file: ' + remotePath + ' ? y/n')
-        if reaction.lower() == 'y':
-            mod = 2
-        else:
+        if reaction.lower() != 'y':
             return
+    elif mod == 3:
+        return
 
     logger.warning('Deleting... ' + remotePath)
     ftp.rm(remotePath)
@@ -37,9 +37,9 @@ def upload(localPath, remotePath, ftp, conflic_mod=1):
 
     if ftp.isPathExists(remotePath):
         if conflic_mod == 1:
-            reaction = raw_input('[Conflct]\nLocal: ' + localPath + '\n' + 
-                                 'Remote: ' + remotePath + '\n' + 
-                                 'w for overwrite, i for ignore: ')
+            reaction = raw_input('[Conflct]\nLocal: ' + localPath + 
+                                 '\nRemote: ' + remotePath + 
+                                 '\nw for overwrite, i for ignore: ')
             if reaction.lower() == 'w':
                 conflic_mod = 2
             else:
@@ -49,9 +49,11 @@ def upload(localPath, remotePath, ftp, conflic_mod=1):
         conflic_mod = 2
 
     if conflic_mod == 2:
-        parent = remotePath[0:remotePath.rfind('/')]
-        if not ftp.isPathExists(parent):
-            ftp.mkdir(parent)
+        idx = remotePath.rfind('/')
+        if idx >= 0:
+            parent = remotePath[0:idx]
+            if not ftp.isPathExists(parent):
+                ftp.mkdir(parent)
 
         #print localPath, remotePath
         logger.warning('UPLOADING... ' + localPath)
