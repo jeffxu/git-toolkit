@@ -40,8 +40,8 @@ class GftpWrapper(object):
             return False
 
     def rm(self, path):
-        print 'Delete: ' + path
-        pass
+        """Rmoeve remote file."""
+        self.__ftp.delete(path)
 
     def upload(self, localPath, remotePath):
         self.__ftp.storbinary('STOR ' + remotePath, open(localPath, 'rb'))
