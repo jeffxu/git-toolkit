@@ -24,7 +24,7 @@ def dumpFile(innerFilePath, repoRoot, outputDir):
     #print os.path.join(repoRoot, innerFilePath), os.path.join(outputDir, innerFilePath)
     shutil.copy2(os.path.join(repoRoot, innerFilePath), os.path.join(outputDir, innerFilePath))
 
-def getLatestRevHash(repoRoot):
+def getLatestRevHash(sourceDir):
     """Get the latest revision hash code"""
     cmd = "git log --pretty=format:%h -n1"
     p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
@@ -46,18 +46,15 @@ def getRepoRoot(sourceDir):
         return False
     return absPath
 
-def filelog(repoRoot, last):
+def getRevisionByStep(lastStep, sourceDir):
+    cmd = "git log --pretty=format:%%h -n1 --skip=%s" % lastStep
+    p = Popen(cmd, shell=True, stdout=PIPE, cwd=sourceDir)
+    return p.stdout.read()
+
+def filelog(repoRoot, diff):
     """ Generate the file logs """
 
-    cmd = "git log --pretty=format:%%h -n1 --skip=%s" % last
-    p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
-    rev = p.stdout.read()
-    if len(rev) == 0:
-        rev = ""
-    diff = rev + ".." + getLatestRevHash(repoRoot)
-
     cmd = "git diff --name-status %s" % diff
-
     p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
     logs_raw = p.stdout.read()
     logs_raw = StringIO.StringIO(logs_raw)
@@ -71,10 +68,10 @@ def filelog(repoRoot, last):
 
     return logs
 
-def export(sourceDir, outputDir, last, verbose=False):
+def export(sourceDir, outputDir, diff, verbose=False):
     """Copy files from repository to output dir."""
     # Abs paths
-    sourceDir   = path.abspath(sourceDir)
+    sourceDir = path.abspath(sourceDir)
     outputDir = path.abspath(outputDir)
 
     #print sourceDir, outputDir, last
@@ -90,7 +87,7 @@ def export(sourceDir, outputDir, last, verbose=False):
         # git will print the error message, something like "fatal: Not a git repository (or any of the parent directories): .git"
         return 2
 
-    logs = filelog(repoRoot, last)
+    logs = filelog(repoRoot, diff)
     for log in logs:
         if log[0] != 'D':
             dumpFile(log[1], repoRoot, outputDir)
@@ -101,10 +98,11 @@ def main():
     """Main Function"""
     p = optparse.OptionParser(description="Export files from git repository", 
                                 prog=os.path.basename(sys.argv[0]), 
-                                version="0.1a", 
-                                usage="%prog [WORK_DIR] [OUTPUT_DIR] -v -l [number]")
+                                version="0.2a", 
+                                usage="%prog [WORK_DIR] [OUTPUT_DIR] -v -l [step] -r [revsion rev1..rev2]")
     p.add_option("--verbose", "-v", action="store_true", dest="verbose", default=False)
     p.add_option("--last", "-l", action="store", dest="last")
+    p.add_option("--rev", "-r", action="store", dest="revision")
 
     options, arguments = p.parse_args()
     argLen = len(arguments)
@@ -119,15 +117,24 @@ def main():
             sys.exit()
 
     if argLen <= 1:
-        outputDir = '/tmp/%s_%d' % (os.path.basename(sourceDir), int(time.time()))
+        outputDir = '/tmp/gitexport_%s_%d' % (os.path.basename(sourceDir), int(time.time()))
     else:
         outputDir = arguments[1]
 
-    if not options.last:
+    if not options.last and not options.revision:
         options.last = 1
 
+    if options.revision:
+        diff = options.revision
+    elif options.last:
+        rev = getRevisionByStep(options.last, sourceDir)
+        if len(rev) == 0:
+            rev = ""
+        diff = rev + ".." + getLatestRevHash(sourceDir)
+
+
     result = export(sourceDir = sourceDir, outputDir = outputDir, 
-                    last = options.last, 
+                    diff = diff, 
                     verbose = options.verbose)
     if result == 0:
         print 'Repsitory has been exported to %s' % outputDir
