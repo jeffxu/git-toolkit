@@ -36,17 +36,15 @@ def getLatestRevHash(repoRoot):
 
 def getRepoRoot(sourceDir):
     """Return the abs path to the root repository dir"""
-    # If the work dir is not the root of the repository dir, then get the
-    # the relative path to the root.(../../)
-    cmd = "git rev-parse --show-cdup"
+    cmd = "git rev-parse --show-toplevel"
     p = Popen(cmd, shell=True, stdout=PIPE, cwd=sourceDir)
-    relDir = p.stdout.readlines()
-    if len(relDir) > 0:
-        relDir = relDir[0].strip()
+    absPath = p.stdout.readlines()
+
+    if len(absPath) > 0:
+        absPath = absPath[0].strip()
     else:
         return False
-    sourceDir = path.join(sourceDir, relDir)
-    return path.abspath(sourceDir)
+    return absPath
 
 def filelog(repoRoot, last):
     """ Generate the file logs """
