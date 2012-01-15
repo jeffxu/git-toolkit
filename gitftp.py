@@ -4,40 +4,31 @@ from os import path
 
 repoRoot = ''
 
-logger = logging.getLogger('git-ftp')
-formatter = logging.Formatter('%(asctime)s %(message)s')
-hdlr = logging.StreamHandler()
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr) 
-
 def rm(remotePath, ftp, mod=1):
     ''' mod: 1 ask for futher action, remove or ignore.
              2 remove anyway.
              3 ignore
     '''
-    global logger
-
     if mod == 1:
-        reaction = raw_input('Delete the remote file: ' + remotePath + ' ? y/n')
+        reaction = raw_input('Delete the remote file: ' + remotePath + ' ? y/n: ')
         if reaction.lower() != 'y':
             return
     elif mod == 3:
         return
 
-    logger.warning('Deleting... ' + remotePath)
+    logging.warning('Deleting... ' + remotePath)
     ftp.rm(remotePath)
-    logger.warning('COMPLETE')
+    logging.warning('COMPLETE')
 
 def upload(localPath, remotePath, ftp, conflic_mod=1):
     ''' conflic_mod: 1 ask user for futher action, overwrite or ignore.
                      2 overwrite.
                      3 ignore.
     '''
-    global logger
 
     if ftp.isPathExists(remotePath):
         if conflic_mod == 1:
-            reaction = raw_input('[Conflct]\nLocal: ' + localPath + 
+            reaction = raw_input('[Conflict]\nLocal: ' + localPath + 
                                  '\nRemote: ' + remotePath + 
                                  '\nw for overwrite, i for ignore: ')
             if reaction.lower() == 'w':
@@ -56,11 +47,11 @@ def upload(localPath, remotePath, ftp, conflic_mod=1):
                 ftp.mkdir(parent)
 
         #print localPath, remotePath
-        logger.warning('UPLOADING... ' + localPath)
+        logging.warning('UPLOADING... ' + localPath)
         ftp.upload(localPath, remotePath)
-        logger.warning('COMPLETE')
+        logging.warning('COMPLETE')
     else:
-        logger.warning('IGNORE ' + localPath)
+        logging.warning('IGNORE ' + localPath)
 
 def sync(localRelPath, remotePath, logs, ftp, mod=1):
     global repoRoot
@@ -139,7 +130,7 @@ def readConfig(path, mode=False):
     return config
 
 def main():
-    global repoRoot, logger
+    global repoRoot
 
     from gitexport import getRepoRoot, filelog
     p = optparse.OptionParser(description="Sync files to the ftp.", 
@@ -148,12 +139,15 @@ def main():
                                 usage="%prog [WORK_DIR] -v -l [number]")
     p.add_option("--verbose", "-v", action="store_true", dest="verbose", default=False)
     p.add_option("--last",    "-l", action="store", dest="last")
-    #no log messages, .gitftp.cfg must given and settings must set properly, 
+    # --diff export files between revisions. WARNING:the purpose of this action is to export 
+    # files in that range of commits, but the revision is still the latest.
+    p.add_option("--rev", "-r", action="store", dest="revision")
+    # --silence no log messages, .gitftp.cfg must given and settings must set properly, 
     # or app will be interrupted without messages.
     p.add_option("--silence", "-s", action="store_true", dest="silence_mode", default=False)
-    #force overwrite and delete remote files.
+    # --force force overwrite and delete remote files.
     p.add_option("--force",   "-f", action="store_true", dest="force_mode", default=False)
-    #increase only, ignore overwrite and delete.
+    # --increase increase only, ignore overwrite and delete.
     p.add_option("--increase",  "-i", action="store_true", dest="increase_mode", default=False)
 
     options, arguments = p.parse_args()
@@ -168,12 +162,14 @@ def main():
         options.last = 1
 
     if options.silence_mode:
-        logger.setLevel(logging.CRITICAL)
+        loglevel = logging.CRITICAL
         mode = 2
     elif options.verbose:
-        logger.setLevel(logging.INFO)
+        loglevel = logging.INFO
     else:
-        logger.setLevel(logging.WARNING)
+        loglevel = logging.WARNING
+
+    logging.basicConfig(format='%(asctime)s %(message)s', level=loglevel)
 
     if options.force_mode:
         mode = 2
@@ -183,7 +179,7 @@ def main():
         mode = 1
 
     repoRoot = getRepoRoot(sourceDir) + '/'
-    logger.info('Repository root: ' + repoRoot)
+    logging.info('Repository root: ' + repoRoot)
 
     configPath = repoRoot + '.gitftp.cfg'
     config = readConfig(configPath, options.silence_mode)
