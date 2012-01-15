@@ -1,17 +1,7 @@
 #!/usr/bin/env python
-import sys, optparse, StringIO, os, shutil, time
+import sys, optparse, StringIO, os, shutil, time, logging
 from os import path
 from subprocess import Popen, PIPE, call
-
-def parseLog(log, verbose=False):
-    """Parsing every single log printed from git log command"""
-    if log.startswith('D'):
-        print log
-        return False
-    else:
-        if verbose:
-            print log
-    return log.split("\t")[1]
 
 def dumpFile(innerFilePath, repoRoot, outputDir):
     """Dump file from the given path which is sub path relative to the repository root."""
@@ -27,7 +17,7 @@ def dumpFile(innerFilePath, repoRoot, outputDir):
 def getLatestRevHash(sourceDir):
     """Get the latest revision hash code"""
     cmd = "git log --pretty=format:%h -n1"
-    p = Popen(cmd, shell=True, stdout=PIPE, cwd=repoRoot)
+    p = Popen(cmd, shell=True, stdout=PIPE, cwd=sourceDir)
     rev = p.stdout.read()
     if len(rev) == 0:
         return ""
@@ -64,11 +54,13 @@ def filelog(repoRoot, diff):
         line = logs_raw.readline()
         if not line:
             break;
-        logs.append(line.strip().split('\t'))
+        line = line.strip()
+        logs.append(line.split('\t'))
+        logging.info(line)
 
     return logs
 
-def export(sourceDir, outputDir, diff, verbose=False):
+def export(sourceDir, outputDir, diff):
     """Copy files from repository to output dir."""
     # Abs paths
     sourceDir = path.abspath(sourceDir)
@@ -76,7 +68,7 @@ def export(sourceDir, outputDir, diff, verbose=False):
 
     #print sourceDir, outputDir, last
     if not path.exists(sourceDir):
-        print "Repsitory dir not exists."
+        logging.info("Repsitory dir not exists.")
         return 2
 
     if  not path.exists(outputDir):
@@ -124,6 +116,13 @@ def main():
     if not options.last and not options.revision:
         options.last = 1
 
+    if options.verbose:
+        loglevel = logging.INFO
+    else:
+        loglevel = logging.WARNING
+
+    logging.basicConfig(format='%(asctime)s %(message)s', level=loglevel)
+
     if options.revision:
         diff = options.revision
     elif options.last:
@@ -134,10 +133,9 @@ def main():
 
 
     result = export(sourceDir = sourceDir, outputDir = outputDir, 
-                    diff = diff, 
-                    verbose = options.verbose)
+                    diff = diff)
     if result == 0:
-        print 'Repsitory has been exported to %s' % outputDir
+        logging.info('Repsitory has been exported to %s' % outputDir)
         osname = os.uname()[0]
         if osname == 'Linux': # Linux gui
             try:
