@@ -132,7 +132,7 @@ def readConfig(path, mode=False):
 def main():
     global repoRoot
 
-    from gitexport import getRepoRoot, filelog
+    from gitexport import getRepoRoot, filelog, getRevisionByStep, getLatestRevHash
     p = optparse.OptionParser(description="Sync files to the ftp.", 
                                 prog=os.path.basename(sys.argv[0]), 
                                 version="0.1a", 
@@ -158,8 +158,7 @@ def main():
     else:
         sourceDir = arguments[0]
 
-    if not options.last:
-        options.last = 1
+    mode = 1
 
     if options.silence_mode:
         loglevel = logging.CRITICAL
@@ -175,8 +174,6 @@ def main():
         mode = 2
     elif options.increase_mode:
         mode = 3
-    else:
-        mode = 1
 
     repoRoot = getRepoRoot(sourceDir) + '/'
     logging.info('Repository root: ' + repoRoot)
@@ -197,7 +194,18 @@ def main():
     if not ftp.loginSuccess:
         exit(2)
 
-    logs = filelog(repoRoot, options.last)
+    if not options.last and not options.revision:
+        options.last = 1
+
+    if options.revision:
+        diff = options.revision
+    elif options.last:
+        rev = getRevisionByStep(options.last, sourceDir)
+        if len(rev) == 0:
+            rev = ""
+        diff = rev + ".." + getLatestRevHash(sourceDir)
+
+    logs = filelog(repoRoot, diff)
     sync(config['local'], config['remote'], logs, ftp, mode)
 
     ftp.close()
