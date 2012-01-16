@@ -12,7 +12,11 @@ def dumpFile(innerFilePath, repoRoot, outputDir):
             os.makedirs(destPath)
 
     #print os.path.join(repoRoot, innerFilePath), os.path.join(outputDir, innerFilePath)
-    shutil.copy2(os.path.join(repoRoot, innerFilePath), os.path.join(outputDir, innerFilePath))
+    absFile = os.path.join(repoRoot, innerFilePath)
+    if os.path.exists(absFile):
+        shutil.copy2(absFile, os.path.join(outputDir, innerFilePath))
+    else:
+        logging.info("File not exists: %s" % absFile)
 
 def getLatestRevHash(sourceDir):
     """Get the latest revision hash code"""
