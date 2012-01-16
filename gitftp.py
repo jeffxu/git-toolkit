@@ -143,7 +143,7 @@ def main():
                                 usage="%prog [WORK_DIR] -v -l [number]")
     p.add_option("--verbose", "-v", action="store_true", dest="verbose", default=False)
     p.add_option("--last",    "-l", action="store", dest="last")
-    # --diff export files between revisions. WARNING:the purpose of this action is to export 
+    # --rev export files between revisions. WARNING:the purpose of this action is to export 
     # files in that range of commits, but the revision is still the latest.
     p.add_option("--rev", "-r", action="store", dest="revision")
     # --silence no log messages, .gitftp.cfg must given and settings must set properly, 
