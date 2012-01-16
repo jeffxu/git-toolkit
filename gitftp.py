@@ -17,8 +17,10 @@ def rm(remotePath, ftp, mod=1):
         return
 
     logging.warning('Deleting... ' + remotePath)
-    ftp.rm(remotePath)
-    logging.warning('COMPLETE')
+    if ftp.rm(remotePath):
+        logging.warning('COMPLETE')
+    else:
+        logging.warning('FAILED Remote file not exists')
 
 def upload(localPath, remotePath, ftp, conflic_mod=1):
     ''' conflic_mod: 1 ask user for futher action, overwrite or ignore.
@@ -48,8 +50,10 @@ def upload(localPath, remotePath, ftp, conflic_mod=1):
 
         #print localPath, remotePath
         logging.warning('UPLOADING... ' + localPath)
-        ftp.upload(localPath, remotePath)
-        logging.warning('COMPLETE')
+        if ftp.upload(localPath, remotePath):
+            logging.warning('COMPLETE')
+        else:
+            logging.warning('FAILED Local file not exists')
     else:
         logging.warning('IGNORE ' + localPath)
 

@@ -41,10 +41,18 @@ class GftpWrapper(object):
 
     def rm(self, path):
         """Rmoeve remote file."""
-        self.__ftp.delete(path)
+        try:
+            self.__ftp.delete(path)
+            return True
+        except error_perm:
+            return False
 
     def upload(self, localPath, remotePath):
-        self.__ftp.storbinary('STOR ' + remotePath, open(localPath, 'rb'))
+        try:
+            self.__ftp.storbinary('STOR ' + remotePath, open(localPath, 'rb'))
+            return True
+        except IOError:
+            return False
 
     def isPathExists(self, path):
         """Check for given path whether exists."""
