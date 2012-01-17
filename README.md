@@ -20,7 +20,7 @@ The most of the usage are the same as what we do in git export, addtionally add 
 
 - --silence Ivisible all log info, .gitftp.cfg file must given and settings must set properly, or the script will be interrupted without messages. Force to overwrite and remove remote file. 
 - --force  Force to overwrite and remove remote files.
-- --increase  Only add files, ignore conflicts and remove.
+- --increase  Only add files, skip conflicts and remove action.
 
 If none of these flag applied, script will ask user for further action when conflicts occured.
 

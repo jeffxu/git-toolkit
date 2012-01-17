@@ -5,9 +5,9 @@ from os import path
 repoRoot = ''
 
 def rm(remotePath, ftp, mod=1):
-    ''' mod: 1 ask for futher action, remove or ignore.
+    ''' mod: 1 ask for futher action, remove or skip.
              2 remove anyway.
-             3 ignore
+             3 skip
     '''
     if mod == 1:
         reaction = raw_input('Delete the remote file: ' + remotePath + ' ? y/n: ')
@@ -23,16 +23,16 @@ def rm(remotePath, ftp, mod=1):
         logging.warning('FAILED Remote file not exists')
 
 def upload(localPath, remotePath, ftp, conflic_mod=1):
-    ''' conflic_mod: 1 ask user for futher action, overwrite or ignore.
+    ''' conflic_mod: 1 ask user for futher action, overwrite or skip.
                      2 overwrite.
-                     3 ignore.
+                     3 skip.
     '''
 
     if ftp.isPathExists(remotePath):
         if conflic_mod == 1:
             reaction = raw_input('[Conflict]\nLocal: ' + localPath + 
                                  '\nRemote: ' + remotePath + 
-                                 '\nw for overwrite, i for ignore: ')
+                                 '\nw for overwrite, i for skip: ')
             if reaction.lower() == 'w':
                 conflic_mod = 2
             else:
@@ -55,7 +55,7 @@ def upload(localPath, remotePath, ftp, conflic_mod=1):
         else:
             logging.warning('FAILED Local file not exists')
     else:
-        logging.warning('IGNORE ' + localPath)
+        logging.warning('SKIP ' + localPath)
 
 def sync(localRelPath, remotePath, logs, ftp, mod=1):
     global repoRoot
@@ -151,7 +151,7 @@ def main():
     p.add_option("--silence", "-s", action="store_true", dest="silence_mode", default=False)
     # --force force overwrite and delete remote files.
     p.add_option("--force",   "-f", action="store_true", dest="force_mode", default=False)
-    # --increase increase only, ignore overwrite and delete.
+    # --increase increase only, skip overwrite and delete.
     p.add_option("--increase",  "-i", action="store_true", dest="increase_mode", default=False)
 
     options, arguments = p.parse_args()
