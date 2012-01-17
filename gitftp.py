@@ -12,6 +12,7 @@ def rm(remotePath, ftp, mod=1):
     if mod == 1:
         reaction = raw_input('Delete the remote file: ' + remotePath + ' ? y/n: ')
         if reaction.lower() != 'y':
+            logging.warning('SKIP')
             return
     elif mod == 3:
         return
@@ -36,6 +37,7 @@ def upload(localPath, remotePath, ftp, conflic_mod=1):
             if reaction.lower() == 'w':
                 conflic_mod = 2
             else:
+                logging.warning('SKIP')
                 conflic_mod = 3
     else:
         # File not exists, continue to upload.
@@ -54,8 +56,6 @@ def upload(localPath, remotePath, ftp, conflic_mod=1):
             logging.warning('COMPLETE')
         else:
             logging.warning('FAILED Local file not exists')
-    else:
-        logging.warning('SKIP ' + localPath)
 
 def sync(localRelPath, remotePath, logs, ftp, mod=1):
     global repoRoot
