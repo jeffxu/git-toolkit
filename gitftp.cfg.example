@@ -1,6 +1,0 @@
-[setting]
-host: FTP_IP_ADDRESS
-user: FTP_ACCOUNT
-pwd: FTP_PASSWORD 
-remote_base_path: REMOTE_BASE_PATH
-local_base_path: LOCAL_BASE_PATH
